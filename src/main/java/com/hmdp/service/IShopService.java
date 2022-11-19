@@ -1,7 +1,9 @@
 package com.hmdp.service;
 
+import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
 import com.baomidou.mybatisplus.extension.service.IService;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * <p>
@@ -14,4 +16,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 public interface IShopService extends IService<Shop> {
 
     Object queryById(Long id);
+
+    @Transactional
+    Result updateshop(Shop shop);
 }
