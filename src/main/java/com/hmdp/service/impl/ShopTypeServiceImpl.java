@@ -32,7 +32,7 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
     @Override
     public Object querylist() {
         List<Object> values = stringRedisTemplate.opsForHash().values("cache:shoptype");
-        if (values.size()!=0||values!=null){
+        if (values.size()!=0){
             ArrayList<ShopType> arrayList = new ArrayList();
             for (Object value : values) {
                 ShopType shopType = JSON.parseObject(value.toString(), ShopType.class);
