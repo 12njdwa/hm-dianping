@@ -1,6 +1,8 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.alibaba.fastjson.JSON;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
@@ -34,9 +36,9 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
     @Override
     public Object queryById(Long id) {
-           return queryWithPenetration(id);
+//           return queryWithPenetration(id);
 //         return queryWithLogicalExpire(id);
-//         return queryWithMutex(id);
+        return queryWithMutex(id);
     }
 
     //存空值 解决缓存穿透
@@ -110,8 +112,25 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         if (StrUtil.isBlank(s)) {
             return null;
         }
-        redisData = JSON.parseObject(s, RedisData.class);
-        Shop shop = (Shop) redisData.getData();
+
+//        redisData = JSON.parseObject(s, RedisData.class);
+//        Shop shop = (Shop) redisData.getData();
+
+        redisData= JSONUtil.toBean(s, RedisData.class);
+        //因为Data是Object对象，所以需要再次转换一下。
+        Shop shop = JSONUtil.toBean((JSONObject) redisData.getData(), Shop.class);
+        LocalDateTime expireTime = redisData.getExpireTime();
+        //判断是否逻辑过期
+        if (expireTime.isAfter(LocalDateTime.now())){
+            return shop;
+        }
+        //逻辑过期后，获取互斥锁
+        boolean getlock = getlock("lock:shop"+id);
+        //判断是否获取到了锁，得到锁后开启新线程，实现缓存重建
+        if (getlock){
+            new Thread();
+        }
+
         if (shop != null) {
             return null;
         }
@@ -148,11 +167,15 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         stringRedisTemplate.delete(RedisConstants.CACHE_SHOP_KEY + shop.getId());
         return Result.ok();
     }
-
     public void saveShop2Redis(Long id, Long expireSeconds) {
+        //查询店铺数据
+        Shop shop = getById(id);
+        //封装逻辑过期时间
         RedisData redisData = new RedisData();
         redisData.setData(getById(id));
         redisData.setExpireTime(LocalDateTime.now().plusSeconds(expireSeconds));
+        //写入redis
+        stringRedisTemplate.opsForValue().set("cache:shop:"+id,);
     }
 
     private boolean getlock(String key) {
