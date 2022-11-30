@@ -73,7 +73,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         RandomGenerator randomGenerator = new RandomGenerator(6);
         String code = randomGenerator.generate();
 
-        stringRedisTemplate.opsForValue().set("login:code:"+phone,code,2, TimeUnit.MINUTES);
+        stringRedisTemplate.opsForValue().set(RedisConstants.LOGIN_CODE_KEY+phone,code,2, TimeUnit.MINUTES);
 
 //        发送验证码
         log.debug("发送短信验证码成功" + code);
@@ -131,13 +131,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         //随机生成token，作为登录令牌，就相当于sessionid
         String token = UUID.randomUUID().toString(true);
 
+        //将对象以Hash结构存储在redis
         BeanUtils.copyProperties(user,userDTO);
         //UserDTO转Map,这是alibaba的FASTJSON中的方法，（百度的）
         Map<String, String> userMap =JSON.parseObject(JSON.toJSONString(userDTO), new TypeReference<Map<String, String>>(){});
-
         String s = RedisConstants.LOGIN_USER_KEY+ token;
         stringRedisTemplate.opsForHash().putAll(s,userMap);
-        stringRedisTemplate.expire(s,30,TimeUnit.MINUTES);
+        stringRedisTemplate.expire(s,400,TimeUnit.MINUTES);
 
         return Result.ok(token);
     }

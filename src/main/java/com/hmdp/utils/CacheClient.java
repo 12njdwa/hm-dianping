@@ -6,7 +6,6 @@ import cn.hutool.json.JSONUtil;
 import com.alibaba.fastjson.JSON;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
-import com.sun.istack.internal.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -50,6 +49,7 @@ public class CacheClient {
         return r;
     }
 
+    //逻辑过期 解决缓存击穿
     public <R,ID> R queryWithLogicalExpire(String keyPrefix,ID id,Function<ID,R> fallback,Class<R> type,Long time,TimeUnit unit) throws InterruptedException {
         String idstring = keyPrefix + id;
         String s = stringRedisTemplate.opsForValue().get(idstring);
@@ -58,6 +58,11 @@ public class CacheClient {
         //第一次，缓存中没有数据，从数据库中查出并存入redis
         if (StrUtil.isBlank(s)) {
             R r = fallback.apply(id);
+            //还是做一下缓存穿透
+            if (r==null){
+                stringRedisTemplate.opsForValue().set(idstring, "", 1L, TimeUnit.MINUTES);
+                return null;
+            }
             return saveShop2Redis(idstring,r,time,unit);
         }
         redisData = JSONUtil.toBean(s, RedisData.class);
@@ -98,7 +103,6 @@ public class CacheClient {
         return r;
     }
     private boolean getlock(String key) {
-        @Nullable
         Boolean exist = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", 10L, TimeUnit.SECONDS);
         return exist;
     }

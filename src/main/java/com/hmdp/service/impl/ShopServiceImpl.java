@@ -154,14 +154,13 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
 
     @Override
-    @Transactional
+    @Transactional              //先更新数据库再删除缓存，在满足原子性的情况下相对先删缓存安全性较高。所以需要用到事务
     public Result updateshop(Shop shop) {
         //更新数据库
         Long id = shop.getId();
         if (id == null) {
             return Result.fail("店铺id不能为空");
         }
-        System.out.println(shop.toString());
         updateById(shop);
         //删除缓存
         stringRedisTemplate.delete(RedisConstants.CACHE_SHOP_KEY + shop.getId());
