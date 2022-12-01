@@ -19,7 +19,7 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
     Result seckillVoucherForDistributed(Long voucherId) throws InterruptedException;
 
     //抢秒杀券   分布式锁  进一步的性能优化
-    Result seckillVoucherForDistributed2(Long voucherId) throws InterruptedException;
+//    Result seckillVoucherForDistributed2(Long voucherId) throws InterruptedException;
 
     Result createVoucherOrder(Long voucherId, Long userId);
 }

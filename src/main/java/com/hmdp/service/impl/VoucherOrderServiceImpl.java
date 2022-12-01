@@ -59,11 +59,11 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
     }
 
     //阻塞队列
-    private BlockingQueue<VoucherOrder> orderTasks=new ArrayBlockingQueue<>(1024*1024);
-    private static final ExecutorService SECKILL_ORDER_EXECUTOR= Executors.newSingleThreadExecutor();
+    private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024 * 1024);
+    private static final ExecutorService SECKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor();
 
     @PostConstruct
-    private void init(){
+    private void init() {
         SECKILL_ORDER_EXECUTOR.submit(new VoucherOrderHandler());
     }
 
@@ -72,25 +72,25 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         RLock lock = redissonClient.getLock("lock:order:" + userId);
         boolean success = lock.tryLock(1L, TimeUnit.SECONDS);
         if (!success) {
-           log.error("不允许重复下单");
-           return;
+            log.error("不允许重复下单");
+            return;
         }
         try {
-             proxy.createVoucherOrder(voucherOrder.getVoucherId(), userId);
+            proxy.createVoucherOrder(voucherOrder.getVoucherId(), userId);
         } finally {
             lock.unlock();
         }
     }
 
-    private class VoucherOrderHandler implements Runnable{
+    private class VoucherOrderHandler implements Runnable {
         @Override
         public void run() {
-            while (true){
+            while (true) {
                 try {
                     VoucherOrder voucherOrder = orderTasks.take();
                     handlerVoucherOrder(voucherOrder);
                 } catch (InterruptedException e) {
-                    log.error("订单处理异常",e);
+                    log.error("订单处理异常", e);
                 }
             }
         }
@@ -168,34 +168,35 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
     }
 
-private IVoucherOrderService proxy;
-    //抢秒杀券   分布式锁  进一步的性能优化
-    @Override
-    public Result seckillVoucherForDistributed2(Long voucherId) throws InterruptedException {
-        //执行lua脚本
-        Long result = stringRedisTemplate.execute(SECKILL_SCRIPT, Collections.emptyList(), voucherId.toString(), UserHolder.getUser().getId().toString());
-        //判断结果lua脚本返回的结果，是0则继续业务，否则报错
-        switch (result.intValue()){
-            case 1:
-                return Result.fail("库存不足");
-            case 2:
-                return Result.fail("不允许重复下单");
-        }
+    private IVoucherOrderService proxy;
 
-        VoucherOrder voucherOrder = new VoucherOrder();
-        long orderId = reidsIdWorker.nextId("order");
-        voucherOrder.setId(orderId);
-        voucherOrder.setUserId(UserHolder.getUser().getId());
-        voucherOrder.setVoucherId(voucherId);
-        //保存阻塞队列
-        orderTasks.add(voucherOrder);
-        proxy = (IVoucherOrderService) AopContext.currentProxy();
-        stringRedisTemplate.opsForStream().add();
-        stringRedisTemplate.opsForStream().read();
-
-        return Result.ok(orderId);
-
-    }
+//    //抢秒杀券   分布式锁  进一步的性能优化  没看完。
+//    @Override
+//    public Result seckillVoucherForDistributed2(Long voucherId) throws InterruptedException {
+//        //执行lua脚本
+//        Long result = stringRedisTemplate.execute(SECKILL_SCRIPT, Collections.emptyList(), voucherId.toString(), UserHolder.getUser().getId().toString());
+//        //判断结果lua脚本返回的结果，是0则继续业务，否则报错
+//        switch (result.intValue()) {
+//            case 1:
+//                return Result.fail("库存不足");
+//            case 2:
+//                return Result.fail("不允许重复下单");
+//        }
+//
+//        VoucherOrder voucherOrder = new VoucherOrder();
+//        long orderId = reidsIdWorker.nextId("order");
+//        voucherOrder.setId(orderId);
+//        voucherOrder.setUserId(UserHolder.getUser().getId());
+//        voucherOrder.setVoucherId(voucherId);
+//        //保存阻塞队列
+//        orderTasks.add(voucherOrder);
+//        proxy = (IVoucherOrderService) AopContext.currentProxy();
+//        stringRedisTemplate.opsForStream().add();
+//        stringRedisTemplate.opsForStream().read();
+//
+//        return Result.ok(orderId);
+//
+//    }
 
 
     @Transactional
