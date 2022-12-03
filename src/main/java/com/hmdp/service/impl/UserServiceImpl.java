@@ -27,6 +27,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -41,6 +42,9 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
@@ -140,6 +144,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringRedisTemplate.expire(s,400,TimeUnit.MINUTES);
 
         return Result.ok(token);
+    }
+
+    @Override
+    public List<User> queryByIdList(List<Long> collect) {
+        return userMapper.queryByIdList(collect);
     }
 
     private User createUserWithPhone(String phone){
